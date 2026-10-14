@@ -98,4 +98,4 @@ Hackathon prototype (one-day build). Row-level security is left open on the Supa
 
 ## License
 
-Built for the Tectonic Hackathon (KBC challenge track). No license specified.
+Built for Provincie Antwerpen. No license specified.
