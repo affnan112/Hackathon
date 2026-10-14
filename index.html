@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>PROV-AI · Assistent Lokale Economie</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --panel: #ffffff; --border: #d9dde3;
+    --accent: #1a5fb4; --accent-dark: #103a70; --text: #1c1f24; --muted: #62676f;
+    --warn-bg: #fff6da; --warn-border: #e6c84c;
+    --ok: #1f7a3d; --reject: #b3261e; --edit: #b3690e;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 2rem; }
+  .wrap { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.1rem; margin: 2rem 0 0.6rem; }
+  .subtitle { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .tab-btn { background: #eef1f5; border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.9rem; cursor: pointer; font-size: 0.9rem; }
+  .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .question-box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  textarea { flex: 1; resize: vertical; min-height: 60px; border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; font-size: 1rem; font-family: inherit; }
+  input[type=text], select { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; font-size: 0.95rem; margin-bottom: 0.5rem; font-family: inherit; }
+  button { border: none; border-radius: 6px; padding: 0.5rem 1rem; font-size: 0.95rem; cursor: pointer; }
+  button.ask { background: var(--accent); color: white; padding: 0 1.2rem; font-size: 1rem; }
+  button.ask:hover { background: var(--accent-dark); }
+  button.ask:disabled { background: #a9b4c2; cursor: not-allowed; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.4rem; margin-bottom: 1rem; }
+  .field-label { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 1rem; }
+  .field-label:first-child { margin-top: 0; }
+  .field-value { margin-top: 0.2rem; line-height: 1.5; }
+  .field-value.quote { font-style: italic; border-left: 3px solid var(--accent); padding-left: 0.8rem; }
+  .field-value.uncertainty { background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 6px; padding: 0.6rem 0.8rem; }
+  a { color: var(--accent); }
+
+  .view-toggle { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
+  .view-toggle button { background: #eef1f5; color: var(--text); font-size: 0.85rem; }
+  .view-toggle button.active { background: var(--accent-dark); color: white; }
+
+  .email-box { white-space: pre-wrap; background: #fafbfc; border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem; font-family: inherit; }
+
+  .sources-used { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+  .sources-used span { display: inline-block; background: #eef1f5; border-radius: 4px; padding: 0.1rem 0.5rem; margin-right: 0.3rem; margin-top: 0.3rem; }
+
+  .review-row { display: flex; gap: 0.6rem; margin-top: 1rem; align-items: center; flex-wrap: wrap; }
+  .confirm { background: var(--ok); color: white; }
+  .reject { background: var(--reject); color: white; }
+  .edit-toggle { background: var(--edit); color: white; }
+  .copy-btn { background: #7c3aed; color: white; }
+  .copy-btn:hover { background: #6d28d9; }
+  .copy-btn.copied { background: var(--ok); color: white; }
+  .review-status { font-size: 0.9rem; color: var(--muted); }
+
+  .correction-box { display: none; margin-top: 0.8rem; }
+  .correction-box textarea { width: 100%; min-height: 90px; }
+  .correction-box .save-correction { background: var(--edit); color: white; margin-top: 0.4rem; }
+
+  .loading { color: var(--muted); font-style: italic; }
+  .error-box { background: #fdecea; border: 1px solid var(--reject); color: var(--reject); padding: 0.8rem; border-radius: 8px; }
+
+  .doc-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+  .doc-panel textarea { width: 100%; min-height: 90px; margin-bottom: 0.5rem; }
+  .doc-list { font-size: 0.85rem; color: var(--muted); margin-top: 0.8rem; max-height: 220px; overflow-y: auto; }
+  .doc-list .doc-row { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+  .status-tag { display: inline-block; font-size: 0.75rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: #eef1f5; margin-left: 0.3rem; }
+
+  .faq-box { margin-bottom: 1.5rem; }
+  .faq-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+  .faq-chip { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 0.35rem 0.8rem; font-size: 0.85rem; cursor: pointer; color: var(--text); }
+  .faq-chip:hover { background: #eef1f5; border-color: var(--accent); }
+
+  .rank-row { display: flex; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #eef1f5; font-size: 0.9rem; }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-num { font-weight: 600; color: var(--muted); min-width: 1.2rem; }
+  .rank-body { flex: 1; }
+  .rank-score { font-size: 0.75rem; color: var(--muted); margin-left: 0.4rem; }
+  .rank-articles { font-size: 0.8rem; color: var(--muted); margin-top: 0.1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Assistent Lokale Economie — Schoten</h1>
+  <div class="subtitle">
+    Prototype voor PROV-AI Challenge 2 · Antwoord met bewijs, bron en zichtbare onzekerheid.
+    Elk antwoord vereist beoordeling door de medewerker voordat het gebruikt wordt.
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('ask')" id="tabAsk">Vraag stellen</button>
+    <button class="tab-btn" onclick="showTab('docs')" id="tabDocs">Bronnen beheren</button>
+  </div>
+
+  <div id="askTab">
+    <div class="question-box">
+      <textarea id="question" placeholder="Bv. Ik wil een vaste standplaats op de markt in Schoten. Hoe dien ik een aanvraag in?" onkeydown="handleQuestionKeydown(event)"></textarea>
+      <button class="ask" id="askBtn" onclick="ask()">Vraag stellen</button>
+    </div>
+
+    <div class="faq-box">
+      <div class="field-label">Veelgestelde vragen</div>
+      <div class="faq-list" id="faqList"></div>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <div id="docsTab" style="display:none;">
+    <h2>Nieuwe bron toevoegen</h2>
+    <div class="doc-panel">
+      <input type="text" id="docTitle" placeholder="Titel document (bv. Terrasreglement Schoten)">
+      <input type="text" id="docFilename" placeholder="Bestandsnaam (optioneel, standaard = titel)">
+      <select id="docLevel">
+        <option value="">— Kies niveau —</option>
+        <option value="gemeentelijk">Gemeentelijk</option>
+        <option value="vlaams">Vlaams</option>
+        <option value="provinciaal">Provinciaal</option>
+        <option value="federaal">Federaal</option>
+      </select>
+      <input type="text" id="docDate" placeholder="Datum (jjjj-mm-dd, of leeg voor ongedateerd)">
+      <select id="docStatus">
+        <option value="">— Kies status —</option>
+        <option value="current">current — van kracht</option>
+        <option value="undated">undated — ongedateerd</option>
+        <option value="guidance">guidance — richtlijn, geen wetgeving</option>
+        <option value="outdated_copy">outdated_copy — verouderde kopie</option>
+      </select>
+      <input type="text" id="docUrl" placeholder="Publieke URL naar document (optioneel)">
+      <input type="text" id="docWarning" placeholder="Waarschuwing voor gebruikers (optioneel)">
+      <input type="text" id="docArticle" placeholder="Artikel (voor dit fragment)">
+      <input type="text" id="docPage" placeholder="Pagina (voor dit fragment)">
+      <textarea id="docContent" placeholder="De exacte tekst van het fragment…"></textarea>
+      <button class="ask" onclick="addDocument()">Bron toevoegen</button>
+      <div id="docStatusMsg"></div>
+    </div>
+
+    <h2>Huidige bronnen</h2>
+    <div class="doc-list" id="docList">Laden…</div>
+  </div>
+</div>
+
+<script>
+let lastAnswerId = null;
+
+const FAQ_QUESTIONS = [
+  "Mag ik als winkelier reclameborden of affiches ophangen op de openbare weg?",
+  "Mag mijn hond loslopen op straat in Schoten?",
+  "Ik wil een vaste standplaats op de markt in Schoten. Hoe dien ik een aanvraag in?",
+  "Tot hoe laat mag mijn café muziek spelen zonder klachten te riskeren?",
+  "Ben ik als winkelier verplicht mijn stoep sneeuwvrij te maken?",
+  "Wanneer mag ik mijn afvalcontainer buitenzetten?",
+  "Wat is het sluitingsuur voor mijn café?",
+  "Mag ik een nachtwinkel openen naast mijn bestaande zaak?",
+];
+
+function initFaq() {
+  const list = document.getElementById("faqList");
+  list.innerHTML = FAQ_QUESTIONS.map(
+    q => `<button class="faq-chip" onclick="askFaq(this)">${q}</button>`
+  ).join("");
+}
+
+function askFaq(btn) {
+  document.getElementById("question").value = btn.textContent;
+  ask();
+}
+
+function handleQuestionKeydown(event) {
+  // Enter submits; Shift+Enter still inserts a newline for longer questions.
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    ask();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", initFaq);
+
+function showTab(name) {
+  document.getElementById('askTab').style.display = name === 'ask' ? 'block' : 'none';
+  document.getElementById('docsTab').style.display = name === 'docs' ? 'block' : 'none';
+  document.getElementById('tabAsk').classList.toggle('active', name === 'ask');
+  document.getElementById('tabDocs').classList.toggle('active', name === 'docs');
+  if (name === 'docs') loadDocuments();
+}
+
+function parseAnswer(text) {
+  const fields = ["Vraag", "Bevinding", "Bewijs", "Bron", "Toepasselijkheid", "Onzekerheid"];
+  const out = {};
+  for (let i = 0; i < fields.length; i++) {
+    const label = fields[i];
+    const nextLabel = fields[i + 1];
+    const startMatch = text.match(new RegExp(label + ":\\s*"));
+    if (!startMatch) continue;
+    const startIdx = startMatch.index + startMatch[0].length;
+    let endIdx = text.length;
+    if (nextLabel) {
+      const endMatch = text.slice(startIdx).match(new RegExp(nextLabel + ":"));
+      if (endMatch) endIdx = startIdx + endMatch.index;
+    }
+    out[label] = text.slice(startIdx, endIdx).trim();
+  }
+  return out;
+}
+
+function linkify(text) {
+  return text.replace(/(https?:\/\/[^\s]+)/g, (url) => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+}
+
+async function ask() {
+  const question = document.getElementById("question").value.trim();
+  const resultDiv = document.getElementById("result");
+  const btn = document.getElementById("askBtn");
+  if (!question) return;
+
+  btn.disabled = true;
+  resultDiv.innerHTML = '<p class="loading">Bronnen doorzoeken en antwoord opstellen…</p>';
+
+  try {
+    const res = await fetch("/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultDiv.innerHTML = `<div class="error-box">Fout: ${data.error || "onbekende fout"}</div>`;
+      return;
+    }
+
+    lastAnswerId = data.answer_id;
+    const f = parseAnswer(data.answer);
+
+    resultDiv.innerHTML = `
+      <div class="panel">
+        <div class="view-toggle">
+          <button class="active" id="viewBriefing" onclick="setView('briefing')">Interne briefing</button>
+          <button id="viewEmail" onclick="setView('email')">E-mailconcept</button>
+        </div>
+
+        <div id="briefingView">
+          <div class="field-label">Vraag</div>
+          <div class="field-value">${f.Vraag || question}</div>
+          <div class="field-label">Bevinding</div>
+          <div class="field-value">${f.Bevinding || ""}</div>
+          <div class="field-label">Bewijs</div>
+          <div class="field-value quote">${f.Bewijs || ""}</div>
+          <div class="field-label">Bron</div>
+          <div class="field-value">${linkify(f.Bron || "")}</div>
+          <div class="field-label">Toepasselijkheid</div>
+          <div class="field-value">${f.Toepasselijkheid || ""}</div>
+          <div class="field-label">Onzekerheid</div>
+          <div class="field-value uncertainty">${f.Onzekerheid || ""}</div>
+        </div>
+
+        <div id="emailView" style="display:none;">
+          <p class="loading" id="emailLoading">E-mailconcept opstellen…</p>
+          <div class="email-box" id="emailContent" style="display:none;"></div>
+        </div>
+
+        <div class="sources-used" id="rankedSources"></div>
+
+        <div class="review-row">
+          <button class="confirm" onclick="review('confirmed')">Bevestigen</button>
+          <button class="edit-toggle" onclick="toggleCorrection()">Corrigeren</button>
+          <button class="reject" onclick="review('rejected')">Afwijzen</button>
+          <button class="copy-btn" onclick="copyCurrentView()">📋 Kopiëren</button>
+          <span class="review-status" id="reviewStatus"></span>
+        </div>
+
+        <div class="correction-box" id="correctionBox">
+          <div class="field-label">Correctie / nota van medewerker</div>
+          <textarea id="correctionText" placeholder="Pas het antwoord hier aan…">${data.answer}</textarea>
+          <button class="save-correction" onclick="review('corrected')">Correctie opslaan</button>
+        </div>
+      </div>
+    `;
+
+    window._rawAnswer = data.answer;
+    renderRankedSources(data.ranked_sources || []);
+  } catch (err) {
+    resultDiv.innerHTML = `<div class="error-box">Netwerkfout: ${err}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderRankedSources(sources) {
+  const container = document.getElementById("rankedSources");
+  if (!sources.length) {
+    container.innerHTML = "";
+    return;
+  }
+  const rows = sources.map((s, i) => {
+    const warnIcon = (s.status === "outdated_copy" || s.status === "undated") ? " ⚠" : "";
+    const linkPart = s.public_url
+      ? `<a href="${s.public_url}" target="_blank" rel="noopener">${s.title}</a>`
+      : s.title;
+    const articlesPart = s.matches
+      .filter(m => m.article || m.page)
+      .map(m => [m.article, m.page ? `p. ${m.page}` : null].filter(Boolean).join(", "))
+      .join(" · ");
+    const scoreLabel = s.ranked ? `score ${s.best_score.toFixed(3)}` : "ongerangschikt (trefwoord)";
+    return `
+      <div class="rank-row">
+        <span class="rank-num">${i + 1}.</span>
+        <div class="rank-body">
+          <div>${linkPart}${warnIcon} <span class="rank-score">${scoreLabel}</span></div>
+          ${articlesPart ? `<div class="rank-articles">${articlesPart}</div>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+  container.innerHTML = `<div class="field-label">Ondersteunende bronnen (gerangschikt)</div>${rows}`;
+}
+
+function toggleCorrection() {
+  const box = document.getElementById("correctionBox");
+  box.style.display = box.style.display === "block" ? "none" : "block";
+}
+
+function copyCurrentView() {
+  const emailVisible = document.getElementById("emailView").style.display !== "none";
+  let textToCopy;
+  if (emailVisible) {
+    textToCopy = document.getElementById("emailContent").textContent;
+  } else {
+    textToCopy = window._rawAnswer || "";
+  }
+  navigator.clipboard.writeText(textToCopy).then(() => {
+    const btn = event.target;
+    const original = btn.textContent;
+    btn.textContent = "✓ Gekopieerd";
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.classList.remove("copied");
+    }, 1500);
+  }).catch(() => {
+    alert("Kopiëren mislukt. Selecteer en kopieer de tekst handmatig.");
+  });
+}
+
+async function setView(view) {
+  document.getElementById("briefingView").style.display = view === "briefing" ? "block" : "none";
+  document.getElementById("emailView").style.display = view === "email" ? "block" : "none";
+  document.getElementById("viewBriefing").classList.toggle("active", view === "briefing");
+  document.getElementById("viewEmail").classList.toggle("active", view === "email");
+
+  if (view === "email") {
+    const contentDiv = document.getElementById("emailContent");
+    const loadingP = document.getElementById("emailLoading");
+    if (contentDiv.dataset.loaded) return;
+
+    loadingP.style.display = "block";
+    contentDiv.style.display = "none";
+    try {
+      const res = await fetch("/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: window._rawAnswer }),
+      });
+      const data = await res.json();
+      loadingP.style.display = "none";
+      contentDiv.style.display = "block";
+      contentDiv.textContent = data.email_draft || data.error;
+      contentDiv.dataset.loaded = "true";
+    } catch (err) {
+      loadingP.textContent = "Fout bij opstellen e-mailconcept: " + err;
+    }
+  }
+}
+
+async function review(decision) {
+  const statusSpan = document.getElementById("reviewStatus");
+  let officer_note = null;
+  if (decision === "corrected") {
+    officer_note = document.getElementById("correctionText").value;
+  }
+
+  if (!lastAnswerId) {
+    statusSpan.textContent = "⚠ Kon niet opslaan (geen answer_id — controleer databankverbinding).";
+    return;
+  }
+
+  try {
+    const res = await fetch("/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer_id: lastAnswerId, decision, officer_note }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      statusSpan.textContent = "⚠ " + (data.error || "fout bij opslaan");
+      return;
+    }
+    statusSpan.textContent = {
+      confirmed: "✓ Bevestigd door medewerker.",
+      corrected: "✓ Correctie opgeslagen.",
+      rejected: "✗ Afgewezen — niet gebruikt.",
+    }[decision];
+  } catch (err) {
+    statusSpan.textContent = "⚠ Netwerkfout: " + err;
+  }
+}
+
+async function loadDocuments() {
+  const listDiv = document.getElementById("docList");
+  listDiv.textContent = "Laden…";
+  try {
+    const res = await fetch("/documents");
+    const data = await res.json();
+    if (!res.ok) {
+      listDiv.textContent = "Fout: " + data.error;
+      return;
+    }
+    listDiv.innerHTML = (data.documents || [])
+      .map(d => `<div class="doc-row"><strong>${d.title}</strong> — ${d.level || ""} <span class="status-tag">${d.status}</span></div>`)
+      .join("") || "Nog geen bronnen.";
+  } catch (err) {
+    listDiv.textContent = "Netwerkfout: " + err;
+  }
+}
+
+async function addDocument() {
+  const msg = document.getElementById("docStatusMsg");
+  const payload = {
+    title: document.getElementById("docTitle").value.trim(),
+    filename: document.getElementById("docFilename").value.trim(),
+    level: document.getElementById("docLevel").value,
+    doc_date: document.getElementById("docDate").value.trim(),
+    status: document.getElementById("docStatus").value,
+    public_url: document.getElementById("docUrl").value.trim(),
+    warning: document.getElementById("docWarning").value.trim(),
+    article: document.getElementById("docArticle").value.trim(),
+    page: document.getElementById("docPage").value.trim(),
+    content: document.getElementById("docContent").value.trim(),
+  };
+
+  if (!payload.title || !payload.level || !payload.status || !payload.content) {
+    msg.innerHTML = '<div class="error-box">Titel, niveau, status en tekst zijn verplicht.</div>';
+    return;
+  }
+
+  try {
+    const res = await fetch("/documents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.innerHTML = `<div class="error-box">Fout: ${data.error}</div>`;
+      return;
+    }
+    msg.innerHTML = '<p style="color: var(--ok);">✓ Bron toegevoegd.</p>';
+    ["docTitle","docFilename","docDate","docUrl","docWarning","docArticle","docPage","docContent"]
+      .forEach(id => document.getElementById(id).value = "");
+    document.getElementById("docLevel").value = "";
+    document.getElementById("docStatus").value = "";
+    loadDocuments();
+  } catch (err) {
+    msg.innerHTML = `<div class="error-box">Netwerkfout: ${err}</div>`;
+  }
+}
+</script>
+</body>
+</html>
